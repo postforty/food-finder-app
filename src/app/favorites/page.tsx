@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import Link from "next/link";
 import { useFavorites } from "@/context/FavoritesContext";
 import { db } from "@/lib/firebase/client";
@@ -36,7 +37,7 @@ export default function FavoritesPage() {
         const restaurantPromises = favorites.map(async (id) => {
           const docRef = doc(db, "restaurants", id);
           const docSnap = await getDoc(docRef);
-          
+
           if (docSnap.exists()) {
             return {
               id: docSnap.id,
@@ -47,7 +48,9 @@ export default function FavoritesPage() {
         });
 
         const results = await Promise.all(restaurantPromises);
-        const validRestaurants = results.filter((r): r is Restaurant => r !== null);
+        const validRestaurants = results.filter(
+          (r): r is Restaurant => r !== null
+        );
         setRestaurants(validRestaurants);
       } catch (error) {
         console.error("Error fetching favorite restaurants:", error);
@@ -89,7 +92,10 @@ export default function FavoritesPage() {
           <div className="text-center mb-8 animate-fadeIn">
             <div className="text-6xl mb-4">❤️</div>
             <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-              <span className="gradient-text" style={{ fontFamily: 'var(--font-display)' }}>
+              <span
+                className="gradient-text"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
                 즐겨찾기
               </span>
             </h1>
@@ -129,8 +135,8 @@ export default function FavoritesPage() {
                 {/* Restaurant Image */}
                 <div className="relative h-48 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center overflow-hidden">
                   {restaurant.imageUrl ? (
-                    <img 
-                      src={restaurant.imageUrl} 
+                    <img
+                      src={restaurant.imageUrl}
                       alt={restaurant.name}
                       className="w-full h-full object-cover"
                     />
@@ -144,15 +150,18 @@ export default function FavoritesPage() {
                     onClick={() => handleRemoveFavorite(restaurant.id)}
                     className="absolute bottom-4 right-4 p-2 bg-white/90 dark:bg-black/50 backdrop-blur-sm rounded-full hover:bg-white dark:hover:bg-black/70 transition-all duration-200 shadow-lg"
                   >
-                    <svg className="w-6 h-6 text-[var(--accent)] fill-current" viewBox="0 0 24 24">
+                    <svg
+                      className="w-6 h-6 text-[var(--accent)] fill-current"
+                      viewBox="0 0 24 24"
+                    >
                       <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
                   </button>
                 </div>
 
                 {/* Restaurant Info */}
-                <Link 
-                  href={restaurant.mapUrl || "#"} 
+                <Link
+                  href={restaurant.mapUrl || "#"}
                   target={restaurant.mapUrl ? "_blank" : undefined}
                   rel={restaurant.mapUrl ? "noopener noreferrer" : undefined}
                   className="block p-6"
@@ -175,7 +184,9 @@ export default function FavoritesPage() {
                             방문자 {restaurant.visitorReviewCount}
                           </span>
                         </div>
-                        <span className="text-[var(--foreground-subtle)]">•</span>
+                        <span className="text-[var(--foreground-subtle)]">
+                          •
+                        </span>
                       </>
                     )}
                     {restaurant.blogReviewCount !== undefined && (
@@ -194,18 +205,7 @@ export default function FavoritesPage() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-[var(--surface)] border-t border-[var(--border)] py-12 px-4 mt-20">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <span className="text-2xl">🍽️</span>
-            <span className="text-xl font-bold gradient-text">Food Finder</span>
-          </div>
-          <p className="text-[var(--foreground-muted)]">
-            최고의 맛집을 찾는 가장 쉬운 방법
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

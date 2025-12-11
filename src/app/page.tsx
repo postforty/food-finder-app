@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import Link from "next/link";
 import { useFavorites } from "@/context/FavoritesContext";
 import { db } from "@/lib/firebase/client";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  startAfter,
+} from "firebase/firestore";
 
 interface Restaurant {
   id: string;
@@ -22,39 +30,65 @@ interface Restaurant {
 }
 
 const categoryEmojis: Record<string, string> = {
-  "한식": "🍚",
-  "중식": "🥟",
-  "일식": "🍣",
-  "양식": "🍝",
-  "카페": "☕",
-  "디저트": "🍰",
-  "분식": "🍜",
-  "치킨": "🍗",
-  "피자": "🍕",
+  한식: "🍚",
+  중식: "🥟",
+  일식: "🍣",
+  양식: "🍝",
+  카페: "☕",
+  디저트: "🍰",
+  분식: "🍜",
+  치킨: "🍗",
+  피자: "🍕",
 };
 
 export default function RestaurantsPage() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
   const { isFavorite, toggleFavorite } = useFavorites();
-  
-  const [selectedCategory, setSelectedCategory] = useState(categoryParam || "all");
+
+  const [selectedCategory, setSelectedCategory] = useState(
+    categoryParam || "all"
+  );
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"reviews" | "name">("reviews");
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastDoc, setLastDoc] = useState<any>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+  const [selectedRestaurant, setSelectedRestaurant] =
+    useState<Restaurant | null>(null);
 
-  // Fetch restaurants from Firestore
+  const ITEMS_PER_PAGE = 12; // 한 번에 로드할 아이템 수
+
+  // Fetch initial restaurants from Firestore
   useEffect(() => {
-    async function fetchRestaurants() {
+    async function fetchInitialRestaurants() {
       try {
-        const q = query(collection(db, "restaurants"), orderBy("createdAt", "desc"));
+        // 카테고리 목록을 위한 전체 데이터 조회 (카테고리만)
+        const allDocsQuery = query(collection(db, "restaurants"));
+        const allDocsSnapshot = await getDocs(allDocsQuery);
+        const categorySet = new Set<string>();
+
+        allDocsSnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.category) {
+            categorySet.add(data.category);
+          }
+        });
+        setCategories(["all", ...Array.from(categorySet)]);
+
+        // 초기 데이터 로드 (페이지네이션)
+        const q = query(
+          collection(db, "restaurants"),
+          orderBy("createdAt", "desc"),
+          limit(ITEMS_PER_PAGE)
+        );
         const querySnapshot = await getDocs(q);
         const list: Restaurant[] = [];
-        const categorySet = new Set<string>();
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
@@ -62,21 +96,25 @@ export default function RestaurantsPage() {
             id: doc.id,
             name: data.name || "",
             category: data.category || "",
-            reviews: typeof data.reviews === 'number' ? data.reviews : 0,
-            blogReviews: typeof data.blogReviews === 'number' ? data.blogReviews : 0,
+            reviews: typeof data.reviews === "number" ? data.reviews : 0,
+            blogReviews:
+              typeof data.blogReviews === "number" ? data.blogReviews : 0,
             address: data.address || "",
             imageUrl: data.imageUrl || "",
             description: data.description || "",
             mapUrl: data.mapUrl || "",
             tags: data.tags || [],
           });
-          if (data.category) {
-            categorySet.add(data.category);
-          }
         });
 
         setRestaurants(list);
-        setCategories(["all", ...Array.from(categorySet)]);
+
+        // 마지막 문서 저장 (다음 페이지 로드용)
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+        setLastDoc(lastVisible);
+
+        // 더 로드할 데이터가 있는지 확인
+        setHasMore(querySnapshot.docs.length === ITEMS_PER_PAGE);
       } catch (error) {
         console.error("Error fetching restaurants:", error);
       } finally {
@@ -84,7 +122,7 @@ export default function RestaurantsPage() {
       }
     }
 
-    fetchRestaurants();
+    fetchInitialRestaurants();
   }, []);
 
   useEffect(() => {
@@ -93,22 +131,117 @@ export default function RestaurantsPage() {
     }
   }, [categoryParam]);
 
-  const filteredRestaurants = restaurants
-    .filter((restaurant) => {
-      const matchesCategory = selectedCategory === "all" || restaurant.category === selectedCategory;
-      const matchesSearch = 
-        restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        restaurant.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (restaurant.tags && restaurant.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
-      return matchesCategory && matchesSearch;
-    })
-    .sort((a, b) => {
-      if (sortBy === "reviews") {
-        return (b.reviews || 0) - (a.reviews || 0);
+  // 검색어 디바운싱 (500ms 지연)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Load more restaurants
+  const loadMoreRestaurants = async () => {
+    if (!hasMore || loadingMore || !lastDoc) return;
+
+    setLoadingMore(true);
+    try {
+      const q = query(
+        collection(db, "restaurants"),
+        orderBy("createdAt", "desc"),
+        startAfter(lastDoc),
+        limit(ITEMS_PER_PAGE)
+      );
+      const querySnapshot = await getDocs(q);
+      const newList: Restaurant[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        newList.push({
+          id: doc.id,
+          name: data.name || "",
+          category: data.category || "",
+          reviews: typeof data.reviews === "number" ? data.reviews : 0,
+          blogReviews:
+            typeof data.blogReviews === "number" ? data.blogReviews : 0,
+          address: data.address || "",
+          imageUrl: data.imageUrl || "",
+          description: data.description || "",
+          mapUrl: data.mapUrl || "",
+          tags: data.tags || [],
+        });
+      });
+
+      if (newList.length > 0) {
+        setRestaurants((prev) => [...prev, ...newList]);
+        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+        setLastDoc(lastVisible);
+        setHasMore(querySnapshot.docs.length === ITEMS_PER_PAGE);
+      } else {
+        setHasMore(false);
       }
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      return 0;
-    });
+    } catch (error) {
+      console.error("Error loading more restaurants:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && hasMore && !loadingMore) {
+          loadMoreRestaurants();
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "100px",
+      }
+    );
+
+    const sentinel = document.getElementById("scroll-sentinel");
+    if (sentinel) {
+      observer.observe(sentinel);
+    }
+
+    return () => {
+      if (sentinel) {
+        observer.unobserve(sentinel);
+      }
+    };
+  }, [hasMore, loadingMore, lastDoc]);
+
+  // 필터링과 정렬을 메모이제이션으로 최적화
+  const filteredRestaurants = useMemo(() => {
+    return restaurants
+      .filter((restaurant) => {
+        const matchesCategory =
+          selectedCategory === "all" ||
+          restaurant.category === selectedCategory;
+        const matchesSearch =
+          restaurant.name
+            .toLowerCase()
+            .includes(debouncedSearchQuery.toLowerCase()) ||
+          restaurant.address
+            .toLowerCase()
+            .includes(debouncedSearchQuery.toLowerCase()) ||
+          (restaurant.tags &&
+            restaurant.tags.some((tag) =>
+              tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+            ));
+        return matchesCategory && matchesSearch;
+      })
+      .sort((a, b) => {
+        if (sortBy === "reviews") {
+          return (b.reviews || 0) - (a.reviews || 0);
+        }
+        if (sortBy === "name") return a.name.localeCompare(b.name);
+        return 0;
+      });
+  }, [restaurants, selectedCategory, debouncedSearchQuery, sortBy]);
 
   const handleRandomPick = () => {
     if (filteredRestaurants.length === 0) {
@@ -121,7 +254,9 @@ export default function RestaurantsPage() {
 
     // 1.5초 동안 스피닝 애니메이션 후 결과 표시
     setTimeout(() => {
-      const randomIndex = Math.floor(Math.random() * filteredRestaurants.length);
+      const randomIndex = Math.floor(
+        Math.random() * filteredRestaurants.length
+      );
       setSelectedRestaurant(filteredRestaurants[randomIndex]);
       setIsSpinning(false);
     }, 1500);
@@ -153,7 +288,10 @@ export default function RestaurantsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8 animate-fadeIn">
             <h1 className="text-4xl sm:text-5xl font-bold mb-4">
-              <span className="gradient-text" style={{ fontFamily: 'var(--font-display)' }}>
+              <span
+                className="gradient-text"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
                 음식점 찾기
               </span>
             </h1>
@@ -197,7 +335,9 @@ export default function RestaurantsPage() {
               } disabled:opacity-50 disabled:cursor-not-allowed`}
               title="랜덤으로 식당 선택하기"
             >
-              <span className={`text-xl ${isSpinning ? "animate-spin" : ""}`}>🎰</span>
+              <span className={`text-xl ${isSpinning ? "animate-spin" : ""}`}>
+                🎰
+              </span>
               <span>{isSpinning ? "선택 중..." : "랜덤 룰렛"}</span>
             </button>
 
@@ -211,7 +351,9 @@ export default function RestaurantsPage() {
                     : "bg-[var(--surface)] text-[var(--foreground-muted)] hover:bg-[var(--border)]"
                 }`}
               >
-                <span className="text-xl">{categoryEmojis[category] || "🍽️"}</span>
+                <span className="text-xl">
+                  {categoryEmojis[category] || "🍽️"}
+                </span>
                 <span>{category === "all" ? "전체" : category}</span>
               </button>
             ))}
@@ -223,10 +365,14 @@ export default function RestaurantsPage() {
               {filteredRestaurants.length}개의 결과
             </p>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-[var(--foreground-muted)]">정렬:</span>
+              <span className="text-sm text-[var(--foreground-muted)]">
+                정렬:
+              </span>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as "reviews" | "name")}
+                onChange={(e) =>
+                  setSortBy(e.target.value as "reviews" | "name")
+                }
                 className="px-3 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm text-[var(--foreground)] outline-none focus:border-[var(--primary)] cursor-pointer"
               >
                 <option value="reviews">리뷰 많은순</option>
@@ -260,115 +406,169 @@ export default function RestaurantsPage() {
               </button>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredRestaurants.map((restaurant, index) => (
-                <Link
-                  key={restaurant.id}
-                  href={restaurant.mapUrl || `#`}
-                  target={restaurant.mapUrl ? "_blank" : undefined}
-                  rel={restaurant.mapUrl ? "noopener noreferrer" : undefined}
-                  className="card-hover bg-white dark:bg-[var(--surface-elevated)] rounded-2xl overflow-hidden shadow-lg border border-[var(--border)] animate-fadeIn"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  {/* Restaurant Image */}
-                  <div className="relative h-48 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center">
-                    {restaurant.imageUrl ? (
-                      <img 
-                        src={restaurant.imageUrl} 
-                        alt={restaurant.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-8xl">{categoryEmojis[restaurant.category] || "🍽️"}</span>
-                    )}
-                    <div className="absolute top-4 left-4 bg-white dark:bg-[var(--surface)] px-3 py-1 rounded-full text-sm font-semibold text-[var(--foreground)] shadow-md">
-                      {restaurant.category}
-                    </div>
-                    <button 
-                      onClick={(e) => handleFavoriteClick(e, restaurant.id)}
-                      className="absolute top-4 right-4 p-2 bg-white dark:bg-[var(--surface)] rounded-full shadow-md hover:scale-110 transition-transform"
-                    >
-                      <svg 
-                        className={`w-6 h-6 transition-colors ${
-                          isFavorite(restaurant.id) 
-                            ? "text-red-500 fill-current" 
-                            : "text-gray-400"
-                        }`} 
-                        fill={isFavorite(restaurant.id) ? "currentColor" : "none"}
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* Restaurant Info */}
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-xl font-bold text-[var(--foreground)] mb-1 truncate">
-                          {restaurant.name}
-                        </h3>
-                        <p className="text-sm text-[var(--foreground-muted)] truncate">
-                          {restaurant.address}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="flex items-center gap-1 text-sm text-[var(--foreground-muted)]">
-                        <span>👥 방문자 리뷰</span>
-                        <span className="font-semibold text-[var(--foreground)]">
-                          {restaurant.reviews}
+            <>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredRestaurants.map((restaurant, index) => (
+                  <Link
+                    key={restaurant.id}
+                    href={restaurant.mapUrl || `#`}
+                    target={restaurant.mapUrl ? "_blank" : undefined}
+                    rel={restaurant.mapUrl ? "noopener noreferrer" : undefined}
+                    className="card-hover bg-white dark:bg-[var(--surface-elevated)] rounded-2xl overflow-hidden shadow-lg border border-[var(--border)] animate-fadeIn"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    {/* Restaurant Image */}
+                    <div className="relative h-48 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center">
+                      {restaurant.imageUrl ? (
+                        <img
+                          src={restaurant.imageUrl}
+                          alt={restaurant.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-8xl">
+                          {categoryEmojis[restaurant.category] || "🍽️"}
                         </span>
+                      )}
+                      <div className="absolute top-4 left-4 bg-white dark:bg-[var(--surface)] px-3 py-1 rounded-full text-sm font-semibold text-[var(--foreground)] shadow-md">
+                        {restaurant.category}
                       </div>
-                      {restaurant.blogReviews && restaurant.blogReviews > 0 && (
-                        <>
-                          <span className="text-[var(--foreground-subtle)]">•</span>
-                          <div className="flex items-center gap-1 text-sm text-[var(--foreground-muted)]">
-                            <span>📝 블로그 리뷰</span>
-                            <span className="font-semibold text-[var(--foreground)]">
-                              {restaurant.blogReviews}
+                      <button
+                        onClick={(e) => handleFavoriteClick(e, restaurant.id)}
+                        className="absolute top-4 right-4 p-2 bg-white dark:bg-[var(--surface)] rounded-full shadow-md hover:scale-110 transition-transform"
+                      >
+                        <svg
+                          className={`w-6 h-6 transition-colors ${
+                            isFavorite(restaurant.id)
+                              ? "text-red-500 fill-current"
+                              : "text-gray-400"
+                          }`}
+                          fill={
+                            isFavorite(restaurant.id) ? "currentColor" : "none"
+                          }
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Restaurant Info */}
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-xl font-bold text-[var(--foreground)] mb-1 truncate">
+                            {restaurant.name}
+                          </h3>
+                          <p className="text-sm text-[var(--foreground-muted)] truncate">
+                            {restaurant.address}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-4">
+                        <div className="flex items-center gap-1 text-sm text-[var(--foreground-muted)]">
+                          <span>👥 방문자 리뷰</span>
+                          <span className="font-semibold text-[var(--foreground)]">
+                            {restaurant.reviews}
+                          </span>
+                        </div>
+                        {restaurant.blogReviews &&
+                          restaurant.blogReviews > 0 && (
+                            <>
+                              <span className="text-[var(--foreground-subtle)]">
+                                •
+                              </span>
+                              <div className="flex items-center gap-1 text-sm text-[var(--foreground-muted)]">
+                                <span>📝 블로그 리뷰</span>
+                                <span className="font-semibold text-[var(--foreground)]">
+                                  {restaurant.blogReviews}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                      </div>
+
+                      {restaurant.description && (
+                        <p className="text-sm text-[var(--foreground-muted)] mb-4 line-clamp-2">
+                          {restaurant.description}
+                        </p>
+                      )}
+
+                      {restaurant.tags && restaurant.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {restaurant.tags.slice(0, 3).map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-3 py-1 bg-[var(--surface)] text-[var(--foreground-muted)] text-sm rounded-full"
+                            >
+                              {tag}
                             </span>
-                          </div>
-                        </>
+                          ))}
+                        </div>
                       )}
                     </div>
+                  </Link>
+                ))}
+              </div>
 
-                    {restaurant.description && (
-                      <p className="text-sm text-[var(--foreground-muted)] mb-4 line-clamp-2">
-                        {restaurant.description}
-                      </p>
-                    )}
-
-                    {restaurant.tags && restaurant.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {restaurant.tags.slice(0, 3).map((tag) => (
-                          <span
-                            key={tag}
-                            className="px-3 py-1 bg-[var(--surface)] text-[var(--foreground-muted)] text-sm rounded-full"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+              {/* Infinite Scroll Sentinel */}
+              <div className="mt-8">
+                {/* Load More Button (fallback for manual loading) */}
+                {hasMore && !loadingMore && (
+                  <div className="text-center">
+                    <button
+                      onClick={loadMoreRestaurants}
+                      className="btn px-6 py-3 bg-[var(--surface)] hover:bg-[var(--border)] text-[var(--foreground)] rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      더 보기
+                    </button>
                   </div>
-                </Link>
-              ))}
-            </div>
+                )}
+
+                {/* Loading More Indicator */}
+                {loadingMore && (
+                  <div className="text-center py-8">
+                    <div className="inline-flex items-center gap-3">
+                      <div className="w-6 h-6 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-[var(--foreground-muted)]">
+                        더 많은 맛집을 불러오는 중...
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Intersection Observer Sentinel */}
+                <div id="scroll-sentinel" className="h-4"></div>
+
+                {/* No More Data Indicator */}
+                {!hasMore && restaurants.length > ITEMS_PER_PAGE && (
+                  <div className="text-center py-8">
+                    <div className="text-4xl mb-2">🎉</div>
+                    <p className="text-[var(--foreground-muted)]">
+                      모든 맛집을 확인했습니다! ({restaurants.length}개)
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </section>
 
       {/* Random Selection Modal */}
       {selectedRestaurant && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fadeIn"
           onClick={() => setSelectedRestaurant(null)}
         >
-          <div 
+          <div
             className="bg-white dark:bg-[var(--surface-elevated)] rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-scaleIn"
             onClick={(e) => e.stopPropagation()}
           >
@@ -379,8 +579,18 @@ export default function RestaurantsPage() {
                   onClick={() => setSelectedRestaurant(null)}
                   className="p-2 bg-white dark:bg-[var(--surface)] rounded-full shadow-lg hover:scale-110 transition-transform"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -388,13 +598,15 @@ export default function RestaurantsPage() {
               {/* Restaurant Image */}
               <div className="relative h-56 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center">
                 {selectedRestaurant.imageUrl ? (
-                  <img 
-                    src={selectedRestaurant.imageUrl} 
+                  <img
+                    src={selectedRestaurant.imageUrl}
                     alt={selectedRestaurant.name}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-9xl">{categoryEmojis[selectedRestaurant.category] || "🍽️"}</span>
+                  <span className="text-9xl">
+                    {categoryEmojis[selectedRestaurant.category] || "🍽️"}
+                  </span>
                 )}
                 <div className="absolute bottom-4 left-4 bg-white dark:bg-[var(--surface)] px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
                   {selectedRestaurant.category}
@@ -413,8 +625,16 @@ export default function RestaurantsPage() {
                   {selectedRestaurant.name}
                 </h2>
                 <p className="text-[var(--foreground-muted)] flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   {selectedRestaurant.address}
                 </p>
@@ -426,19 +646,24 @@ export default function RestaurantsPage() {
                   <div className="text-2xl font-bold text-[var(--foreground)]">
                     {selectedRestaurant.reviews}
                   </div>
-                  <div className="text-xs text-[var(--foreground-muted)]">👥 방문자 리뷰</div>
+                  <div className="text-xs text-[var(--foreground-muted)]">
+                    👥 방문자 리뷰
+                  </div>
                 </div>
-                {selectedRestaurant.blogReviews && selectedRestaurant.blogReviews > 0 && (
-                  <>
-                    <div className="w-px h-12 bg-[var(--border)]"></div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-[var(--foreground)]">
-                        {selectedRestaurant.blogReviews}
+                {selectedRestaurant.blogReviews &&
+                  selectedRestaurant.blogReviews > 0 && (
+                    <>
+                      <div className="w-px h-12 bg-[var(--border)]"></div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-[var(--foreground)]">
+                          {selectedRestaurant.blogReviews}
+                        </div>
+                        <div className="text-xs text-[var(--foreground-muted)]">
+                          📝 블로그 리뷰
+                        </div>
                       </div>
-                      <div className="text-xs text-[var(--foreground-muted)]">📝 블로그 리뷰</div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
               </div>
 
               {/* Description */}
@@ -449,18 +674,19 @@ export default function RestaurantsPage() {
               )}
 
               {/* Tags */}
-              {selectedRestaurant.tags && selectedRestaurant.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 justify-center mb-6">
-                  {selectedRestaurant.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 bg-[var(--surface)] text-[var(--foreground-muted)] text-sm rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {selectedRestaurant.tags &&
+                selectedRestaurant.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-center mb-6">
+                    {selectedRestaurant.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-3 py-1 bg-[var(--surface)] text-[var(--foreground-muted)] text-sm rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
               {/* Action Buttons */}
               <div className="flex gap-3">
@@ -470,19 +696,32 @@ export default function RestaurantsPage() {
                   }}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[var(--surface)] hover:bg-[var(--border)] rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                 >
-                  <svg 
+                  <svg
                     className={`w-5 h-5 transition-colors ${
-                      isFavorite(selectedRestaurant.id) 
-                        ? "text-red-500 fill-current" 
+                      isFavorite(selectedRestaurant.id)
+                        ? "text-red-500 fill-current"
                         : "text-gray-400"
-                    }`} 
-                    fill={isFavorite(selectedRestaurant.id) ? "currentColor" : "none"}
-                    stroke="currentColor" 
+                    }`}
+                    fill={
+                      isFavorite(selectedRestaurant.id)
+                        ? "currentColor"
+                        : "none"
+                    }
+                    stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    />
                   </svg>
-                  <span>{isFavorite(selectedRestaurant.id) ? "즐겨찾기 해제" : "즐겨찾기"}</span>
+                  <span>
+                    {isFavorite(selectedRestaurant.id)
+                      ? "즐겨찾기 해제"
+                      : "즐겨찾기"}
+                  </span>
                 </button>
                 {selectedRestaurant.mapUrl && (
                   <a
@@ -491,9 +730,24 @@ export default function RestaurantsPage() {
                     rel="noopener noreferrer"
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all duration-200"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
                     </svg>
                     <span>지도 보기</span>
                   </a>
@@ -504,21 +758,7 @@ export default function RestaurantsPage() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="bg-[var(--surface)] border-t border-[var(--border)] py-12 px-4 mt-20">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <span className="text-2xl">🍽️</span>
-            <span className="text-xl font-bold gradient-text">Food Finder</span>
-          </div>
-          <p className="text-[var(--foreground-muted)] mb-4">
-            최고의 맛집을 찾는 가장 쉬운 방법
-          </p>
-          <p className="text-sm text-[var(--foreground-muted)] mt-6">
-            &copy; 2025 Food Finder. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

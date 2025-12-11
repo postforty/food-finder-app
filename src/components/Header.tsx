@@ -25,8 +25,9 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* Navigation */}
-          <div className="flex items-center gap-2">
+          {/* Right Side Actions */}
+          <div className="flex items-center gap-4">
+            {/* Favorites Button */}
             {hasFavorites && (
               <Link
                 href="/favorites"
@@ -43,33 +44,8 @@ export default function Header() {
                 <span className="hidden md:inline">즐겨찾기</span>
               </Link>
             )}
-            {user && isAdmin && (
-              <Link
-                href="/admin/restaurants"
-                className="flex items-center gap-2 px-3 md:px-4 py-2 bg-[var(--surface)] hover:bg-[var(--border)] text-[var(--foreground)] rounded-full font-medium transition-all duration-200 shadow-sm hover:shadow-md group"
-                title="맛집 관리"
-              >
-                <svg
-                  className="w-5 h-5 group-hover:scale-110 transition-transform duration-200"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="hidden md:inline">맛집 관리</span>
-              </Link>
-            )}
-          </div>
 
-          {/* User Actions */}
-          <div className="flex items-center gap-4">
+            {/* User Actions */}
             {loading ? (
               <div className="w-24 h-10 skeleton rounded-full"></div>
             ) : user ? (
@@ -96,14 +72,7 @@ export default function Header() {
                   <span className="sm:hidden">나가기</span>
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={signInWithGoogle}
-                className="btn px-6 py-2.5 bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white rounded-full font-semibold shadow-md hover:shadow-lg transition-all duration-200"
-              >
-                관리자
-              </button>
-            )}
+            ) : null}
           </div>
         </div>
       </nav>
