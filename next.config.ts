@@ -4,6 +4,15 @@ import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['puppeteer'],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+        pathname: '/**',
+      },
+    ],
+  },
 };
 
 export default withPWA({
