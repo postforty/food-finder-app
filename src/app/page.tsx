@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -41,7 +41,7 @@ const categoryEmojis: Record<string, string> = {
   피자: "🍕",
 };
 
-export default function RestaurantsPage() {
+function RestaurantsPageContent() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -760,5 +760,22 @@ export default function RestaurantsPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function RestaurantsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[var(--background)]">
+          <Header />
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
+          </div>
+        </div>
+      }
+    >
+      <RestaurantsPageContent />
+    </Suspense>
   );
 }
