@@ -24,6 +24,7 @@ const featuredRestaurants = [
     image: "🍲",
     distance: "500m",
     tags: ["비빔밥", "된장찌개", "불고기"],
+    mapUrl: "https://map.naver.com/p/search/맛있는한식당",
   },
   {
     id: 2,
@@ -34,6 +35,7 @@ const featuredRestaurants = [
     image: "🍣",
     distance: "1.2km",
     tags: ["초밥", "사시미", "우동"],
+    mapUrl: "https://map.naver.com/p/search/스시마스터",
   },
   {
     id: 3,
@@ -44,6 +46,7 @@ const featuredRestaurants = [
     image: "🍝",
     distance: "800m",
     tags: ["파스타", "피자", "리조또"],
+    mapUrl: "https://map.naver.com/p/search/파스타하우스",
   },
 ];
 
@@ -62,12 +65,12 @@ export default function Home() {
       <Header />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[var(--surface)] to-[var(--background)] py-20 px-4">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[var(--surface)] to-[var(--background)] py-32 px-4">
         <div className="absolute inset-0 bg-[var(--gradient-hero)] pointer-events-none"></div>
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <div className="animate-fadeIn">
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-10 leading-tight">
               <span className="gradient-text" style={{ fontFamily: 'var(--font-display)' }}>
                 맛있는 음식,
               </span>
@@ -76,16 +79,16 @@ export default function Home() {
                 쉽게 찾아보세요
               </span>
             </h1>
-            <p className="text-xl text-[var(--foreground-muted)] mb-10 max-w-2xl mx-auto">
+            <p className="text-xl text-[var(--foreground-muted)] mb-12 max-w-2xl mx-auto leading-relaxed">
               주변의 최고의 음식점을 발견하고, 리뷰를 확인하고, 즐겨찾기에 저장하세요
             </p>
           </div>
 
           {/* Search Bar */}
-          <form onSubmit={handleSearch} className="animate-scaleIn max-w-2xl mx-auto">
+          <form onSubmit={handleSearch} className="animate-scaleIn max-w-2xl mx-auto mb-16">
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] rounded-2xl blur opacity-25 group-hover:opacity-40 transition-opacity duration-300"></div>
-              <div className="relative flex items-center bg-white dark:bg-[var(--surface-elevated)] rounded-2xl shadow-lg overflow-hidden">
+              <div className="relative flex items-center bg-white dark:bg-[var(--surface-elevated)] rounded-2xl shadow-lg overflow-hidden p-1">
                 <span className="pl-6 text-2xl">🔍</span>
                 <input
                   type="text"
@@ -96,7 +99,7 @@ export default function Home() {
                 />
                 <button
                   type="submit"
-                  className="btn m-2 px-8 py-3 bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-200"
+                  className="btn m-1 px-8 py-3 bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-200"
                 >
                   검색
                 </button>
@@ -106,18 +109,18 @@ export default function Home() {
 
           {/* Quick Stats */}
           {user && (
-            <div className="mt-12 grid grid-cols-3 gap-6 max-w-xl mx-auto animate-fadeIn">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-[var(--primary)]">1,234</div>
-                <div className="text-sm text-[var(--foreground-muted)] mt-1">음식점</div>
+            <div className="mt-16 grid grid-cols-3 gap-8 max-w-xl mx-auto animate-fadeIn">
+              <div className="text-center p-4">
+                <div className="text-4xl font-bold text-[var(--primary)] mb-2">1,234</div>
+                <div className="text-base text-[var(--foreground-muted)]">음식점</div>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-[var(--accent)]">5,678</div>
-                <div className="text-sm text-[var(--foreground-muted)] mt-1">리뷰</div>
+              <div className="text-center p-4">
+                <div className="text-4xl font-bold text-[var(--accent)] mb-2">5,678</div>
+                <div className="text-base text-[var(--foreground-muted)]">리뷰</div>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-[var(--secondary)]">890</div>
-                <div className="text-sm text-[var(--foreground-muted)] mt-1">사용자</div>
+              <div className="text-center p-4">
+                <div className="text-4xl font-bold text-[var(--secondary)] mb-2">890</div>
+                <div className="text-base text-[var(--foreground-muted)]">사용자</div>
               </div>
             </div>
           )}
@@ -125,10 +128,10 @@ export default function Home() {
       </section>
 
       {/* Categories Section */}
-      <section className="py-16 px-4">
+      <section className="py-24 px-4 bg-[var(--surface-elevated)]/30">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-[var(--foreground)] mb-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[var(--foreground)] mb-6">
               카테고리별 탐색
             </h2>
             <p className="text-lg text-[var(--foreground-muted)]">
@@ -136,7 +139,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
             {categories.map((category, index) => (
               <Link
                 key={category.id}
@@ -144,11 +147,11 @@ export default function Home() {
                 className="card-hover group"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <div className="bg-white dark:bg-[var(--surface-elevated)] rounded-2xl p-6 text-center shadow-md border border-[var(--border)] hover:border-[var(--primary)] transition-all duration-300">
-                  <div className={`text-5xl mb-3 group-hover:scale-110 transition-transform duration-300 inline-block`}>
+                <div className="bg-white dark:bg-[var(--surface-elevated)] rounded-2xl p-8 text-center shadow-lg border border-[var(--border)] hover:border-[var(--primary)] transition-all duration-300 h-full flex flex-col items-center justify-center">
+                  <div className={`text-6xl mb-6 group-hover:scale-110 transition-transform duration-300 inline-block`}>
                     {category.emoji}
                   </div>
-                  <h3 className="font-semibold text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">
+                  <h3 className="font-semibold text-lg text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">
                     {category.name}
                   </h3>
                 </div>
@@ -159,79 +162,66 @@ export default function Home() {
       </section>
 
       {/* Featured Restaurants */}
-      <section className="py-16 px-4 bg-[var(--surface)]">
+      <section className="py-24 px-4 bg-[var(--surface)]">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-12">
-            <div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[var(--foreground)] mb-2">
-                인기 음식점
-              </h2>
-              <p className="text-lg text-[var(--foreground-muted)]">
-                지금 가장 인기있는 맛집들
-              </p>
-            </div>
-            <Link
-              href="/restaurants"
-              className="hidden sm:flex items-center gap-2 text-[var(--primary)] font-semibold hover:gap-3 transition-all duration-200"
-            >
-              모두 보기
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[var(--foreground)] mb-4">
+              인기 음식점
+            </h2>
+            <p className="text-lg text-[var(--foreground-muted)]">
+              지금 가장 인기있는 맛집들
+            </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {featuredRestaurants.map((restaurant, index) => (
               <div
                 key={restaurant.id}
-                className="card-hover bg-white dark:bg-[var(--surface-elevated)] rounded-2xl overflow-hidden shadow-lg border border-[var(--border)] animate-fadeIn"
+                className="card-hover bg-white dark:bg-[var(--surface-elevated)] rounded-2xl overflow-hidden shadow-xl border border-[var(--border)] animate-fadeIn"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 {/* Restaurant Image */}
-                <div className="relative h-48 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center">
-                  <span className="text-8xl animate-float">{restaurant.image}</span>
-                  <div className="absolute top-4 right-4 bg-white dark:bg-[var(--surface)] px-3 py-1 rounded-full text-sm font-semibold text-[var(--foreground)] shadow-md">
+                <div className="relative h-64 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center">
+                  <span className="text-9xl animate-float">{restaurant.image}</span>
+                  <div className="absolute top-4 right-4 bg-white/90 dark:bg-[var(--surface)]/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-bold text-[var(--foreground)] shadow-lg">
                     {restaurant.distance}
                   </div>
+                  <button className="absolute top-4 left-4 p-3 bg-white/90 dark:bg-[var(--surface)]/90 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform group/btn">
+                    <svg className="w-5 h-5 text-[var(--foreground-subtle)] group-hover/btn:text-[var(--accent)] group-hover/btn:fill-current transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </button>
                 </div>
 
                 {/* Restaurant Info */}
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="text-xl font-bold text-[var(--foreground)] mb-1">
-                        {restaurant.name}
-                      </h3>
-                      <p className="text-sm text-[var(--foreground-muted)]">
-                        {restaurant.category}
-                      </p>
-                    </div>
-                    <button className="p-2 hover:bg-[var(--surface)] rounded-full transition-colors">
-                      <svg className="w-6 h-6 text-[var(--foreground-subtle)] hover:text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    </button>
+                <div className="p-8 text-center">
+                  <div className="mb-4">
+                    <h3 className="text-2xl font-bold text-[var(--foreground)] mb-2">
+                      {restaurant.name}
+                    </h3>
+                    <p className="text-base text-[var(--foreground-muted)]">
+                      {restaurant.category}
+                    </p>
                   </div>
 
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-center gap-3 mb-6">
+                    <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-lg">
                       <span className="text-[var(--secondary)]">⭐</span>
-                      <span className="font-semibold text-[var(--foreground)]">
+                      <span className="font-bold text-[var(--foreground)]">
                         {restaurant.rating}
                       </span>
                     </div>
                     <span className="text-[var(--foreground-subtle)]">•</span>
                     <span className="text-sm text-[var(--foreground-muted)]">
-                      리뷰 {restaurant.reviews}개
+                      리뷰 <span className="font-semibold">{restaurant.reviews}</span>개
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap justify-center gap-2">
                     {restaurant.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="px-3 py-1 bg-[var(--surface)] text-[var(--foreground-muted)] text-sm rounded-full"
+                        className="px-4 py-2 bg-[var(--surface)] text-[var(--foreground-muted)] text-sm font-medium rounded-xl hover:bg-[var(--border)] transition-colors cursor-default"
                       >
                         {tag}
                       </span>
@@ -242,13 +232,13 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="mt-8 text-center sm:hidden">
+          <div className="mt-16 text-center">
             <Link
               href="/restaurants"
-              className="inline-flex items-center gap-2 text-[var(--primary)] font-semibold"
+              className="inline-flex items-center gap-2 text-[var(--primary)] font-semibold px-8 py-4 border-2 border-[var(--primary)] rounded-full hover:bg-[var(--primary)] hover:text-white transition-all text-lg group"
             >
               모두 보기
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </Link>
@@ -256,68 +246,41 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      {!user && (
-        <section className="py-20 px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] rounded-3xl blur-xl opacity-20"></div>
-              <div className="relative bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] rounded-3xl p-12 shadow-2xl">
-                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                  지금 시작하세요
-                </h2>
-                <p className="text-xl text-white/90 mb-8">
-                  로그인하고 나만의 맛집 리스트를 만들어보세요
-                </p>
-                <button
-                  onClick={() => {
-                    const header = document.querySelector('header');
-                    header?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="btn px-8 py-4 bg-white text-[var(--primary)] rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  무료로 시작하기
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Footer */}
-      <footer className="bg-[var(--surface)] border-t border-[var(--border)] py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">🍽️</span>
-                <span className="text-xl font-bold gradient-text">Food Finder</span>
+      <footer className="bg-[var(--surface-elevated)] border-t border-[var(--border)] py-20 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+            <div className="flex flex-col items-center">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-3xl">🍽️</span>
+                <span className="text-2xl font-bold gradient-text">Food Finder</span>
               </div>
-              <p className="text-[var(--foreground-muted)]">
-                최고의 맛집을 찾는 가장 쉬운 방법
+              <p className="text-[var(--foreground-muted)] leading-relaxed">
+                최고의 맛집을 찾는 가장 쉬운 방법.<br />
+                당신의 미식 여행을 시작하세요.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold text-[var(--foreground)] mb-4">서비스</h3>
-              <ul className="space-y-2 text-[var(--foreground-muted)]">
-                <li><Link href="/restaurants" className="hover:text-[var(--primary)] transition-colors">음식점 찾기</Link></li>
-                <li><Link href="/favorites" className="hover:text-[var(--primary)] transition-colors">즐겨찾기</Link></li>
-                <li><Link href="/reviews" className="hover:text-[var(--primary)] transition-colors">리뷰</Link></li>
+              <h3 className="font-bold text-lg text-[var(--foreground)] mb-6">서비스</h3>
+              <ul className="space-y-4 text-[var(--foreground-muted)]">
+                <li><Link href="/restaurants" className="hover:text-[var(--primary)] transition-colors block py-1">음식점 찾기</Link></li>
+                <li><Link href="/favorites" className="hover:text-[var(--primary)] transition-colors block py-1">즐겨찾기</Link></li>
+                <li><Link href="/reviews" className="hover:text-[var(--primary)] transition-colors block py-1">리뷰</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold text-[var(--foreground)] mb-4">회사</h3>
-              <ul className="space-y-2 text-[var(--foreground-muted)]">
-                <li><Link href="/about" className="hover:text-[var(--primary)] transition-colors">소개</Link></li>
-                <li><Link href="/contact" className="hover:text-[var(--primary)] transition-colors">문의</Link></li>
-                <li><Link href="/careers" className="hover:text-[var(--primary)] transition-colors">채용</Link></li>
+              <h3 className="font-bold text-lg text-[var(--foreground)] mb-6">회사</h3>
+              <ul className="space-y-4 text-[var(--foreground-muted)]">
+                <li><Link href="/about" className="hover:text-[var(--primary)] transition-colors block py-1">소개</Link></li>
+                <li><Link href="/contact" className="hover:text-[var(--primary)] transition-colors block py-1">문의</Link></li>
+                <li><Link href="/careers" className="hover:text-[var(--primary)] transition-colors block py-1">채용</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold text-[var(--foreground)] mb-4">법적 고지</h3>
-              <ul className="space-y-2 text-[var(--foreground-muted)]">
-                <li><Link href="/privacy" className="hover:text-[var(--primary)] transition-colors">개인정보처리방침</Link></li>
-                <li><Link href="/terms" className="hover:text-[var(--primary)] transition-colors">이용약관</Link></li>
+              <h3 className="font-bold text-lg text-[var(--foreground)] mb-6">법적 고지</h3>
+              <ul className="space-y-4 text-[var(--foreground-muted)]">
+                <li><Link href="/privacy" className="hover:text-[var(--primary)] transition-colors block py-1">개인정보처리방침</Link></li>
+                <li><Link href="/terms" className="hover:text-[var(--primary)] transition-colors block py-1">이용약관</Link></li>
               </ul>
             </div>
           </div>
@@ -329,4 +292,3 @@ export default function Home() {
     </div>
   );
 }
-

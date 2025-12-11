@@ -18,7 +18,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: "Food Finder - 맛있는 음식을 쉽게 찾아보세요",
-  description: "주변의 최고의 음식점을 발견하고, 리뷰를 확인하고, 즐겨찾기에 저장하세요. Food Finder와 함께 완벽한 맛집을 찾아보세요.",
+  description: "Food Finder와 함께 완벽한 맛집을 찾아보세요.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
