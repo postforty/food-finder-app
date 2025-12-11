@@ -1,6 +1,5 @@
 "use server";
 
-import puppeteer from "puppeteer";
 import { db } from "@/lib/firebase/admin";
 import { Timestamp } from "firebase-admin/firestore";
 
@@ -25,11 +24,40 @@ interface RestaurantData {
 export async function crawlAndSaveRestaurant(url: string, id?: string) {
   let browser;
   try {
-    // ... (브라우저 실행 코드는 동일)
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--lang=ko-KR,ko"],
-    });
+    // 환경에 따라 다른 Puppeteer 설정 사용
+    const isProduction = process.env.NODE_ENV === "production";
+
+    if (isProduction) {
+      // 프로덕션 환경 (Vercel)에서는 puppeteer-core + @sparticuz/chromium 사용
+      const puppeteerCore = await import("puppeteer-core");
+      const chromium = await import("@sparticuz/chromium");
+
+      browser = await puppeteerCore.default.launch({
+        args: chromium.default.args.concat([
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--lang=ko-KR,ko",
+          "--disable-web-security",
+          "--disable-features=VizDisplayCompositor",
+          "--memory-pressure-off",
+          "--max_old_space_size=4096",
+        ]),
+        defaultViewport: { width: 1280, height: 720 },
+        executablePath: await chromium.default.executablePath(),
+        headless: true,
+        timeout: 30000,
+      });
+    } else {
+      // 로컬 개발 환경에서는 일반 puppeteer 사용
+      const puppeteer = await import("puppeteer");
+
+      browser = await puppeteer.default.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--lang=ko-KR,ko"],
+        defaultViewport: { width: 1280, height: 720 },
+        timeout: 30000,
+      });
+    }
     const page = await browser.newPage();
 
     await page.setExtraHTTPHeaders({

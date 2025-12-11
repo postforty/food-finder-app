@@ -3,10 +3,10 @@ import type { NextConfig } from "next";
 import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["puppeteer"],
+  serverExternalPackages: ["puppeteer", "@sparticuz/chromium"],
   experimental: {
     // Vercel에서 Puppeteer 사용을 위한 설정
-    serverComponentsExternalPackages: ["puppeteer-core"],
+    serverComponentsExternalPackages: ["puppeteer-core", "@sparticuz/chromium"],
   },
   images: {
     remotePatterns: [
