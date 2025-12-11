@@ -44,6 +44,8 @@ export default function RestaurantsPage() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
 
   // Fetch restaurants from Firestore
   useEffect(() => {
@@ -108,6 +110,23 @@ export default function RestaurantsPage() {
       return 0;
     });
 
+  const handleRandomPick = () => {
+    if (filteredRestaurants.length === 0) {
+      alert("선택할 수 있는 식당이 없습니다!");
+      return;
+    }
+
+    setIsSpinning(true);
+    setSelectedRestaurant(null);
+
+    // 1.5초 동안 스피닝 애니메이션 후 결과 표시
+    setTimeout(() => {
+      const randomIndex = Math.floor(Math.random() * filteredRestaurants.length);
+      setSelectedRestaurant(filteredRestaurants[randomIndex]);
+      setIsSpinning(false);
+    }, 1500);
+  };
+
   const handleFavoriteClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -167,6 +186,21 @@ export default function RestaurantsPage() {
         <div className="max-w-7xl mx-auto">
           {/* Category Filter */}
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {/* Random Roulette Button */}
+            <button
+              onClick={handleRandomPick}
+              disabled={isSpinning || filteredRestaurants.length === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all duration-200 ${
+                isSpinning
+                  ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg animate-pulse"
+                  : "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md hover:shadow-lg hover:scale-105"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title="랜덤으로 식당 선택하기"
+            >
+              <span className={`text-xl ${isSpinning ? "animate-spin" : ""}`}>🎰</span>
+              <span>{isSpinning ? "선택 중..." : "랜덤 룰렛"}</span>
+            </button>
+
             {categories.map((category) => (
               <button
                 key={category}
@@ -327,6 +361,148 @@ export default function RestaurantsPage() {
           )}
         </div>
       </section>
+
+      {/* Random Selection Modal */}
+      {selectedRestaurant && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fadeIn"
+          onClick={() => setSelectedRestaurant(null)}
+        >
+          <div 
+            className="bg-white dark:bg-[var(--surface-elevated)] rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="relative">
+              <div className="absolute top-4 right-4 z-10">
+                <button
+                  onClick={() => setSelectedRestaurant(null)}
+                  className="p-2 bg-white dark:bg-[var(--surface)] rounded-full shadow-lg hover:scale-110 transition-transform"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Restaurant Image */}
+              <div className="relative h-56 bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center">
+                {selectedRestaurant.imageUrl ? (
+                  <img 
+                    src={selectedRestaurant.imageUrl} 
+                    alt={selectedRestaurant.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-9xl">{categoryEmojis[selectedRestaurant.category] || "🍽️"}</span>
+                )}
+                <div className="absolute bottom-4 left-4 bg-white dark:bg-[var(--surface)] px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                  {selectedRestaurant.category}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full font-bold mb-4 shadow-lg">
+                  <span className="text-2xl">🎉</span>
+                  <span>오늘의 추천!</span>
+                </div>
+                <h2 className="text-3xl font-bold text-[var(--foreground)] mb-2">
+                  {selectedRestaurant.name}
+                </h2>
+                <p className="text-[var(--foreground-muted)] flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  </svg>
+                  {selectedRestaurant.address}
+                </p>
+              </div>
+
+              {/* Reviews */}
+              <div className="flex items-center justify-center gap-4 mb-6 p-4 bg-[var(--surface)] rounded-xl">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-[var(--foreground)]">
+                    {selectedRestaurant.reviews}
+                  </div>
+                  <div className="text-xs text-[var(--foreground-muted)]">👥 방문자 리뷰</div>
+                </div>
+                {selectedRestaurant.blogReviews && selectedRestaurant.blogReviews > 0 && (
+                  <>
+                    <div className="w-px h-12 bg-[var(--border)]"></div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-[var(--foreground)]">
+                        {selectedRestaurant.blogReviews}
+                      </div>
+                      <div className="text-xs text-[var(--foreground-muted)]">📝 블로그 리뷰</div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Description */}
+              {selectedRestaurant.description && (
+                <p className="text-sm text-[var(--foreground-muted)] mb-6 text-center">
+                  {selectedRestaurant.description}
+                </p>
+              )}
+
+              {/* Tags */}
+              {selectedRestaurant.tags && selectedRestaurant.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 justify-center mb-6">
+                  {selectedRestaurant.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1 bg-[var(--surface)] text-[var(--foreground-muted)] text-sm rounded-full"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={(e) => {
+                    handleFavoriteClick(e, selectedRestaurant.id);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[var(--surface)] hover:bg-[var(--border)] rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                >
+                  <svg 
+                    className={`w-5 h-5 transition-colors ${
+                      isFavorite(selectedRestaurant.id) 
+                        ? "text-red-500 fill-current" 
+                        : "text-gray-400"
+                    }`} 
+                    fill={isFavorite(selectedRestaurant.id) ? "currentColor" : "none"}
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  <span>{isFavorite(selectedRestaurant.id) ? "즐겨찾기 해제" : "즐겨찾기"}</span>
+                </button>
+                {selectedRestaurant.mapUrl && (
+                  <a
+                    href={selectedRestaurant.mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all duration-200"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>지도 보기</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-[var(--surface)] border-t border-[var(--border)] py-12 px-4 mt-20">
