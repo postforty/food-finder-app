@@ -5,7 +5,7 @@ import { useFavorites } from "@/context/FavoritesContext";
 import Image from "next/image";
 import Link from "next/link";
 export default function Header() {
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, isAdmin, signInWithGoogle, signOut } = useAuth();
   const { favorites } = useFavorites();
 
   // 즐겨찾기가 있는지 확인
@@ -43,7 +43,7 @@ export default function Header() {
                 <span className="hidden md:inline">즐겨찾기</span>
               </Link>
             )}
-            {user && (
+            {user && isAdmin && (
               <Link
                 href="/admin/restaurants"
                 className="flex items-center gap-2 px-3 md:px-4 py-2 bg-[var(--surface)] hover:bg-[var(--border)] text-[var(--foreground)] rounded-full font-medium transition-all duration-200 shadow-sm hover:shadow-md group"
@@ -57,7 +57,11 @@ export default function Header() {
                   stroke="currentColor"
                   strokeWidth="2"
                 >
-                  <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 <span className="hidden md:inline">맛집 관리</span>
               </Link>
