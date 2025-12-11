@@ -90,7 +90,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="mt-6 pt-6 border-t border-[var(--border)] text-center">
           <p className="text-xs text-[var(--foreground-muted)]">
-            © 2024 Food Finder. All rights reserved.
+            © 2025 Food Finder. All rights reserved.
           </p>
         </div>
       </div>

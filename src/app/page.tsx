@@ -296,8 +296,21 @@ function RestaurantsPageContent() {
               </span>
             </h1>
             <p className="text-lg text-[var(--foreground-muted)]">
-              {filteredRestaurants.length}개의 맛집이 당신을 기다립니다
+              {filteredRestaurants.length}개의 맛집이 당신을 기다립니다.
             </p>
+            <div className="flex items-center justify-center gap-2 mt-4 p-3 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-xl border border-green-200 dark:border-green-700/50">
+              <span className="text-lg">📍</span>
+              <p className="text-sm font-medium text-green-700 dark:text-green-300 text-center sm:text-left">
+                <span className="font-semibold text-green-800 dark:text-green-200">
+                  네이버 지도
+                </span>{" "}
+                <span className="inline sm:inline">앱이 설치되어 있으면</span>
+                <br className="block sm:hidden" />
+                <span className="inline sm:inline">
+                  식당 위치를 확인할 수 있습니다
+                </span>
+              </p>
+            </div>
           </div>
 
           {/* Search Bar */}
