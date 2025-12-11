@@ -1,13 +1,15 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
+import { useFavorites } from "@/context/FavoritesContext";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-
 export default function Header() {
   const { user, loading, signInWithGoogle, signOut } = useAuth();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { favorites } = useFavorites();
+
+  // 즐겨찾기가 있는지 확인
+  const hasFavorites = favorites.length > 0;
 
   return (
     <header className="sticky top-0 z-50 glass border-b border-[var(--border)]">
@@ -23,26 +25,21 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            <Link
-              href="/"
-              className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 font-medium"
-            >
-              홈
-            </Link>
-            <Link
-              href="/restaurants"
-              className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 font-medium"
-            >
-              음식점 찾기
-            </Link>
-            {user && (
+          {/* Navigation */}
+          <div className="flex items-center gap-6">
+            {hasFavorites && (
               <Link
                 href="/favorites"
-                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors duration-200 font-medium"
+                className="flex items-center gap-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-all duration-200 font-medium group"
               >
-                즐겨찾기
+                <svg
+                  className="w-5 h-5 fill-current group-hover:scale-110 transition-transform duration-200"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+                <span>즐겨찾기</span>
               </Link>
             )}
           </div>
@@ -79,72 +76,11 @@ export default function Header() {
                 onClick={signInWithGoogle}
                 className="btn px-6 py-2.5 bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white rounded-full font-semibold shadow-md hover:shadow-lg transition-all duration-200"
               >
-                로그인
+                관리자
               </button>
             )}
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-[var(--surface)] transition-colors"
-              aria-label="메뉴 열기"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                {isMenuOpen ? (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                ) : (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                )}
-              </svg>
-            </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-[var(--border)] animate-fadeIn">
-            <div className="flex flex-col gap-3">
-              <Link
-                href="/"
-                className="px-4 py-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-lg transition-all duration-200"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                홈
-              </Link>
-              <Link
-                href="/restaurants"
-                className="px-4 py-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-lg transition-all duration-200"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                음식점 찾기
-              </Link>
-              {user && (
-                <Link
-                  href="/favorites"
-                  className="px-4 py-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface)] rounded-lg transition-all duration-200"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  즐겨찾기
-                </Link>
-              )}
-            </div>
-          </div>
-        )}
       </nav>
     </header>
   );

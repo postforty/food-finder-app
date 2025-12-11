@@ -4,7 +4,7 @@ import puppeteer from 'puppeteer';
 import { db } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
-export async function crawlAndSaveRestaurant(url: string) {
+export async function crawlAndSaveRestaurant(url: string, id?: string) {
   let browser;
   try {
     // ... (브라우저 실행 코드는 동일)
@@ -87,7 +87,14 @@ export async function crawlAndSaveRestaurant(url: string) {
         throw new Error('식당 정보를 찾을 수 없습니다. (타이틀 요소를 찾지 못함)');
     }
 
-    const restaurantData = {
+    // 리뷰 수에서 숫자만 추출하는 헬퍼 함수
+    const extractNumber = (text: string): number => {
+        if (!text) return 0;
+        const match = text.match(/\d+/);
+        return match ? parseInt(match[0], 10) : 0;
+    };
+
+    const restaurantData: any = {
         name: data.name,
         category: data.category,
         address: data.address,
@@ -96,21 +103,37 @@ export async function crawlAndSaveRestaurant(url: string) {
         businessHours: data.businessHours || '',
         imageUrl: data.imageUrl || '',
         mapUrl: url,
-        reviews: data.visitorReviews || '0', 
-        blogReviews: data.blogReviews || '0',
-        rating: 0, 
+        reviews: extractNumber(data.visitorReviews), 
+        blogReviews: extractNumber(data.blogReviews),
         tags: [],
-        createdAt: Timestamp.now(),
     };
 
-    const docRef = await db.collection("restaurants").add(restaurantData);
+    // 평점은 크롤링 되지 않으므로, 새 등록일 때만 0으로 초기화
+    if (!id) {
+        restaurantData.rating = 0;
+        restaurantData.createdAt = Timestamp.now();
+    } else {
+        restaurantData.updatedAt = Timestamp.now();
+    }
+
+    let docId = id;
+
+    if (id) {
+        // Update existing
+        await db.collection("restaurants").doc(id).set(restaurantData, { merge: true });
+    } else {
+        // Create new
+        const docRef = await db.collection("restaurants").add(restaurantData);
+        docId = docRef.id;
+    }
 
     return { 
         success: true, 
-        id: docRef.id, 
+        id: docId, 
         data: {
             ...restaurantData,
-            createdAt: restaurantData.createdAt.toDate().toISOString() // Admin SDK Timestamp toDate()
+            createdAt: restaurantData.createdAt ? restaurantData.createdAt.toDate().toISOString() : undefined,
+            updatedAt: restaurantData.updatedAt ? restaurantData.updatedAt.toDate().toISOString() : undefined
         } 
     };
 
@@ -120,4 +143,42 @@ export async function crawlAndSaveRestaurant(url: string) {
   } finally {
     if (browser) await browser.close();
   }
+}
+
+export async function updateRestaurant(id: string, data: any) {
+    try {
+        const updateData = {
+            ...data,
+            updatedAt: Timestamp.now()
+        };
+        
+        // Remove undefined fields
+        Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+
+        await db.collection("restaurants").doc(id).update(updateData);
+        return { success: true };
+    } catch (error: any) {
+        console.error('Update failed:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getRestaurant(id: string) {
+    try {
+        const doc = await db.collection("restaurants").doc(id).get();
+        if (!doc.exists) {
+            return { success: false, error: 'Restaurant not found' };
+        }
+        const data = doc.data();
+        if (data && data.createdAt) {
+            data.createdAt = data.createdAt.toDate().toISOString();
+        }
+        if (data && data.updatedAt) {
+            data.updatedAt = data.updatedAt.toDate().toISOString();
+        }
+        return { success: true, data: { id: doc.id, ...data } };
+    } catch (error: any) {
+        console.error('Get restaurant failed:', error);
+        return { success: false, error: error.message };
+    }
 }
