@@ -39,8 +39,8 @@ Food Finder는 주변의 최고의 음식점을 발견하고, 리뷰를 확인�
 ### Backend & Services
 
 - **Authentication**: Firebase Auth (Google Login)
-- **Database**: Firebase Firestore (준비 중)
-- **Hosting**: Vercel (준비 중)
+- **Database**: Firebase Firestore
+- **Hosting**: Vercel (<https://food-finder-app-hazel.vercel.app/>)
 
 ### PWA
 
@@ -59,35 +59,35 @@ Food Finder는 주변의 최고의 음식점을 발견하고, 리뷰를 확인�
 ### 설치
 
 1. **저장소 클론**
-   \`\`\`bash
+   ```bash
    git clone https://github.com/yourusername/food-finder-app.git
    cd food-finder-app
-   \`\`\`
+   ```
 
 2. **의존성 설치**
-   \`\`\`bash
+   ```bash
    npm install
-   \`\`\`
+   ```
 
 3. **환경 변수 설정**
-   \`\`\`bash
+   ```bash
    cp .env.example .env.local
-   \`\`\`
+   ```
 
 `.env.local` 파일을 열어 Firebase 설정값을 입력하세요:
-\`\`\`env
+```env
 NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
-\`\`\`
+```
 
 4. **개발 서버 실행**
-   \`\`\`bash
+   ```bash
    npm run dev
-   \`\`\`
+   ```
 
 브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 확인하세요.
 
