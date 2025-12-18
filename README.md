@@ -230,10 +230,10 @@ npx lighthouse http://localhost:3000 --view
 
 ### Vercel 배포
 
-\`\`\`bash
+```bash
 npm run build
 vercel deploy
-\`\`\`
+```
 
 ### 환경 변수 설정
 
