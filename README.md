@@ -93,7 +93,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 
 ## 📁 프로젝트 구조
 
-\`\`\`
+```
 food-finder-app/
 ├── src/
 │ ├── app/ # Next.js App Router
@@ -119,7 +119,7 @@ food-finder-app/
 │ └── icon-512.png # PWA 아이콘
 ├── .env.example # 환경 변수 예시
 └── next.config.ts # Next.js 설정
-\`\`\`
+```
 
 ## 🎨 디자인 시스템
 
